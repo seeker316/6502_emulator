@@ -6,3 +6,5 @@ my memory will contain opcode of instructions i'll fetch instruction opcodes fro
 
 it is jan 20 8:13 am and i am done with all the declarations and i've defined the instruction table which contains the op codes now iam going to start with the function definitions..............
 
+
+so it is jan 20 and 17:24 after seeing the above entry ....bruh i've wasted my full day is how i feel....that's way to slow....the progress is i've developed helper functions to load code in the memory, to fetch the instructions and execute them....now I think i am finally ready to start with function declarations :() 

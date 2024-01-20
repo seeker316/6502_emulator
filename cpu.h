@@ -34,11 +34,7 @@ public:
         uint16_t address_bus = 0x0000;
     };
 
-private:
-    std::array<uint8_t, 64 *1024> memory;
-
-
-private:
+public:
     struct instruction
     {
         void (cpu::*add_mode_ptr)();
@@ -46,7 +42,11 @@ private:
         uint8_t cycles;                                     
     };
 
+private:
+    std::array<uint8_t, 64 *1024> memory;
     std::vector<instruction> ins_table;
+
+
 
 public: //  DECLARING 6502 INSTRUCTION SET
 
@@ -75,7 +75,7 @@ public: //  DECLARING 6502 INSTRUCTION SET
 // Shifts
     void ASL(); void LSR(); void ROL(); void ROR();
 
-// Jumops and calls 
+// Jumps and calls 
     void JMP(); void JSR(); void RTS();
 
 // Branches 
@@ -111,6 +111,13 @@ public: // ADDRESSING MODES
     void add_IND(); // indirect addressing mode
     void add_iIND(); //indexed indirect addressing mode
     void add_INDi(); // indirect indexed addressing mode   
+
+public: //Helper functions
+    void flash_mem(std::initializer_list<uint8_t> val); //helper function for flashing memory
+    void print_mem(uint8_t upto_add) const; //Helper function for printing memory
+    instruction fetch_ins(); //Helper function to fetch instructions
+    void exe_ins(void (cpu::*addModeType)(), void (cpu::*operation)(), uint8_t cycles);
+
 
 };
 
