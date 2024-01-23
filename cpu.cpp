@@ -1,6 +1,12 @@
 #include "cpu.h"
 #include <iostream>
 
+/*
+Bugs that could be an issue ... can an element of ad array be indexed with hex
+in this case accessing memory location through address bus used in absolute add_mode
+
+
+*/
 
 cpu::cpu()
 { 
@@ -26,6 +32,8 @@ cpu::cpu()
         //REMEMBER  A-0,2,4,6  ADD MODE A CHECK INSTRUCTION TABLE WEBSITE     
         };
 
+    program_counter = 0x1000;
+
 }
 
 cpu::~cpu()
@@ -37,7 +45,7 @@ cpu::~cpu()
 
 //Load operations definitions
 void cpu::LDA()
-{
+{   
     std::cout <<"LDA"<< std::endl;
 }
 
@@ -438,63 +446,134 @@ void cpu::add_IMP()
     std::cout <<"add_IMP"<< std::endl;
 }
 
-void cpu::add_IMM()
-{
+void cpu::add_IMM() //tested status : working
+{   // simplest of the addressing modes nothing much to explain just takes the value next to the instruction
+    // from memory indicated by the program counter
+
+    cpu::program_counter++;
+    cpu::data_bus = cpu::memory[program_counter];
     std::cout <<"add_IMM"<< std::endl;
 }
 
-void cpu::add_ACC()
-{
+void cpu::add_ACC() // not in instruction table
+{   
     std::cout <<"add_ACC"<< std::endl;
 }
 
-void cpu::add_ZP0()
-{
+void cpu::add_ZP0() //tested status : working
+{   
+    cpu::program_counter++;
+    cpu::address_bus = cpu::memory[program_counter];
+    cpu::data_bus = cpu::memory[cpu::address_bus];
+
     std::cout <<"add_ZP0"<< std::endl;
 }
 
-void cpu::add_ZPX()
-{
+void cpu::add_ZPX() //tested status : working
+{   
+    cpu::program_counter++;
+    cpu::address_bus = cpu::memory[program_counter];
+    cpu::address_bus = cpu::address_bus + cpu::X_reg;
+    cpu::data_bus = cpu::memory[cpu::address_bus];
+
     std::cout <<"add_ZPX"<< std::endl;
 }
 
-void cpu::add_ZPY()
-{
+void cpu::add_ZPY() //tested status : working
+{   
+    cpu::program_counter++;
+    cpu::address_bus = cpu::memory[program_counter];
+    cpu::address_bus = cpu::address_bus + cpu::Y_reg;
+    
+    cpu::data_bus = cpu::memory[cpu::address_bus];
+
     std::cout <<"add_ZPY"<< std::endl;
 }
 
-void cpu::add_REL()
-{
+void cpu::add_REL() //tested status : working
+{   cpu::program_counter++;
+    int8_t offset = cpu::memory[cpu::program_counter];
+    cpu::program_counter++;
+    cpu::program_counter = cpu::program_counter + offset;
+
     std::cout <<"add_REL"<< std::endl;
 }
 
-void cpu::add_ABS()
-{
+void cpu::add_ABS() //tested status : working
+{   // basically what this code does is mem = [10 30]
+    // our data is located at the add given by the above data in memory
+    // since 6502 is little endian our the address is located at 3010
+    // therefore the data in adress bus becomes 3010 and the data is located at the address in the address bus
+    cpu::program_counter++;
+    cpu::address_bus = cpu::memory[program_counter];
+    cpu::program_counter++;
+    cpu::address_bus = cpu::address_bus | (memory[program_counter]<<8); 
+    
+    cpu::data_bus = cpu::memory[cpu::address_bus];
+
     std::cout <<"add_ABS"<< std::endl;
 }
 
-void cpu::add_ABX()
-{
+void cpu::add_ABX() //tested status : working
+{   
+    cpu::program_counter++;
+    cpu::address_bus = cpu::memory[program_counter];
+    cpu::program_counter++;
+    cpu::address_bus = cpu::address_bus | (memory[program_counter]<<8); 
+
+    cpu::address_bus = cpu::address_bus + cpu::X_reg;
+
+    cpu::data_bus = cpu::memory[cpu::address_bus];
     std::cout <<"add_ABX"<< std::endl;
 }
 
-void cpu::add_ABY()
-{
+void cpu::add_ABY() //tested status : working
+{   cpu::program_counter++;
+    cpu::address_bus = cpu::memory[program_counter];
+    cpu::program_counter++;
+    cpu::address_bus = cpu::address_bus | (memory[program_counter]<<8); 
+
+    cpu::address_bus = cpu::address_bus + cpu::Y_reg;
+
+    cpu::data_bus = cpu::memory[cpu::address_bus];
     std::cout <<"add_ABY"<< std::endl;
 }
 
-void cpu::add_IND()
-{
+void cpu::add_IND() //tested status : working
+{   
+    cpu::program_counter++;
+    cpu::address_bus = cpu::memory[program_counter];
+    cpu::program_counter++;
+    cpu::address_bus = cpu::address_bus | (memory[program_counter]<<8);
+    cpu::temp_add = cpu::memory[cpu::address_bus];
+    cpu::address_bus = cpu::temp_add | (cpu::memory[++cpu::address_bus]<<8);
+
+    
     std::cout <<"add_IND"<< std::endl;
 }
 
-void cpu::add_iIND()
-{
+void cpu::add_iIND()    //tested status : working
+{   
+    cpu::program_counter++;
+    cpu::address_bus = cpu::memory[program_counter];
+    cpu::address_bus = cpu::address_bus + cpu::X_reg;
+    cpu::temp_add = cpu::memory[cpu::address_bus];
+    cpu::address_bus = cpu::temp_add | (cpu::memory[++cpu::address_bus]<<8);
+    cpu::data_bus = cpu::memory[cpu::address_bus];
+
+
     std::cout <<"add_iIND"<< std::endl;
 }
 
-void cpu::add_INDi()
-{
+void cpu::add_INDi()    //tested status : working
+{   
+    cpu::program_counter++;
+    cpu::address_bus = cpu::memory[program_counter];
+    cpu::temp_add = cpu::memory[cpu::address_bus];
+    cpu::address_bus = cpu::temp_add | (cpu::memory[++cpu::address_bus]<<8);
+    cpu::address_bus = cpu::address_bus + cpu::Y_reg;
+    cpu::data_bus = cpu::memory[cpu::address_bus];
+
     std::cout <<"add_INDi"<< std::endl;
 }
 
@@ -507,6 +586,12 @@ void cpu::flash_mem(std::initializer_list<uint8_t> val) {
     }
 
     std::copy(val.begin(), val.end(), memory.begin());
+}
+
+void cpu::flash_mem_at_loc(uint8_t val ,uint16_t loc)
+{
+    cpu::memory[loc] = val;
+
 }
 
 void cpu::print_mem(uint8_t upto_add) const {
@@ -548,12 +633,23 @@ int main()
     cpu my_6502;
     uint8_t print_mem_upto = 0x05;
 
-    my_6502.flash_mem({0xA9, 0x42}); //LDA add_IMM
+    my_6502.flash_mem({0xF0,0x03,0x20}); //LDA add_ABY add_bus = 2010
+    my_6502.flash_mem_at_loc(0xF0,0x1000); // add_bus = 2010
+    my_6502.flash_mem_at_loc(0x03,0x1001);
+    my_6502.flash_mem_at_loc(0xAA,0x3553);
+;
+    my_6502.Y_reg = 0x10;
     my_6502.print_mem(print_mem_upto);
 
     cpu::instruction ins_info = my_6502.fetch_ins();
 
     my_6502.exe_ins(ins_info.add_mode_ptr, ins_info.operation_ptr, ins_info.cycles);
+
+    //print data bus and address bus
+    std::cout << "Databus (hex): 0x" << std::hex << static_cast<int>(my_6502.data_bus) << std::endl;
+    std::cout << "Addressbus (hex): 0x" << std::hex << static_cast<int>(my_6502.address_bus) << std::endl;
+    std::cout << "Program counter (hex): 0x" << std::hex << static_cast<int>(my_6502.program_counter) << std::endl;
+
 
 
     return 0;

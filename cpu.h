@@ -9,6 +9,10 @@ public:
     ~cpu();
 
 public:
+
+    uint8_t data_bus = 0x00;
+    uint16_t address_bus = 0x0000;
+
     uint16_t program_counter = 0x0000;
 
     uint8_t stack_pointer = 0x00;
@@ -28,12 +32,6 @@ public:
         bool negative_flag = 0;
     };
 
-    struct bus {
-
-        uint8_t data_bus = 0x00;
-        uint16_t address_bus = 0x0000;
-    };
-
 public:
     struct instruction
     {
@@ -43,7 +41,7 @@ public:
     };
 
 private:
-    std::array<uint8_t, 64 *1024> memory;
+    std::array<uint8_t, 64 * 1024> memory;
     std::vector<instruction> ins_table;
 
 
@@ -82,7 +80,7 @@ public: //  DECLARING 6502 INSTRUCTION SET
     void BCC(); void BCS(); void BEQ(); void BMI();
     void BNE(); void BPL(); void BVC(); void BVS();
 
-//Status flag change
+//Status flag changes
     void CLC(); void CLD(); void CLI();
     void CLV(); void SEC(); void SED(); void SEI();
 
@@ -100,7 +98,7 @@ public: //  DECLARING 6502 INSTRUCTION SET
 public: // ADDRESSING MODES
     void add_IMP(); // implicit addressing mode
     void add_IMM(); // immediate addressing mode
-    void add_ACC(); // accumulator addressing mode
+    void add_ACC(); // accumulator addressing mode XXX
     void add_ZP0(); // zero page addressing mode
     void add_ZPX(); // zero page,X addressing mode
     void add_ZPY(); // zero page, Y addressing mode
@@ -114,10 +112,12 @@ public: // ADDRESSING MODES
 
 public: //Helper functions
     void flash_mem(std::initializer_list<uint8_t> val); //helper function for flashing memory
+    void flash_mem_at_loc(uint8_t val, uint16_t loc); //helper function for flashing mem at specific location
     void print_mem(uint8_t upto_add) const; //Helper function for printing memory
     instruction fetch_ins(); //Helper function to fetch instructions
     void exe_ins(void (cpu::*addModeType)(), void (cpu::*operation)(), uint8_t cycles);
 
-
+public: //helper variables
+    uint8_t temp_add;
 };
 
