@@ -19,24 +19,37 @@ public:
     uint8_t accumulator = 0x00;
     uint8_t X_reg = 0x00;
     uint8_t Y_reg = 0x00;
+    uint8_t status_reg = 0x00;
+    // struct flag_reg
+    // {
+    //     bool carry_flag = 0;
+    //     bool zero_flag = 0;
+    //     bool interrupt_disable_flag = 0;
+    //     bool decimal_mode_flag = 0;
+    //     bool break_flag = 0;
+    //     bool reserved_flag = 0;
+    //     bool overflow_flag = 0;
+    //     bool negative_flag = 0;
+    // };
 
-    struct flag_reg
+    enum flag
     {
-        bool carry_flag = 0;
-        bool zero_flag = 0;
-        bool interrupt_disable_flag = 0;
-        bool decimal_mode_flag = 0;
-        bool break_flag = 0;
-        bool reserved_flag = 0;
-        bool overflow_flag = 0;
-        bool negative_flag = 0;
+        C = (1 << 0),	// Carry Bit
+        Z = (1 << 1),	// Zero
+        I = (1 << 2),	// Disable Interrupts
+        D = (1 << 3),	// Decimal Mode (unused in this implementation)
+        B = (1 << 4),	// Break
+        U = (1 << 5),	// Unused
+        V = (1 << 6),	// Overflow
+        N = (1 << 7),	// Negative
     };
+
 
 public:
     struct instruction
     {
-        void (cpu::*add_mode_ptr)();
         void (cpu::*operation_ptr)();
+        void (cpu::*add_mode_ptr)();
         uint8_t cycles;                                     
     };
 
@@ -93,7 +106,7 @@ public: //  DECLARING 6502 INSTRUCTION SET
     void LAX(); void DCP(); void ISC(); void ANC();
     void ALR(); void ARR(); void ANE(); void TAS();
     void LXA(); void LAS(); void SBX(); void SHY();
-    void SHX(); 
+    void SHX(); void USBC();
 
 public: // ADDRESSING MODES
     void add_IMP(); // implicit addressing mode
@@ -114,10 +127,18 @@ public: //Helper functions
     void flash_mem(std::initializer_list<uint8_t> val); //helper function for flashing memory
     void flash_mem_at_loc(uint8_t val, uint16_t loc); //helper function for flashing mem at specific location
     void print_mem(uint8_t upto_add) const; //Helper function for printing memory
-    instruction fetch_ins(); //Helper function to fetch instructions
+    void fetch_ins(); //Helper function to fetch instructions
     void exe_ins(void (cpu::*addModeType)(), void (cpu::*operation)(), uint8_t cycles);
+    
+    uint8_t get_flag(flag f); 
+	void    set_flag(flag f, bool v);
 
 public: //helper variables
     uint8_t temp_add;
+    uint16_t stack_base_add;
+    instruction fetch_ret;
+    uint8_t result_8;
+    uint16_t result_16;
+    uint16_t interrupt_vector_loc;
 };
 

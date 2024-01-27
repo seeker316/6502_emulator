@@ -1,9 +1,12 @@
 #include "cpu.h"
 #include <iostream>
+#include <iomanip>
 
 /*
 Bugs that could be an issue ... can an element of ad array be indexed with hex
 in this case accessing memory location through address bus used in absolute add_mode
+
+line 209 might be a possible issue
 
 
 */
@@ -32,8 +35,10 @@ cpu::cpu()
         //REMEMBER  A-0,2,4,6  ADD MODE A CHECK INSTRUCTION TABLE WEBSITE     
         };
 
-    program_counter = 0x1000;
-
+    // program_counter = 0x1000;
+    stack_base_add = 0x0100;    //0x0100 is the base address of the stack.
+    stack_pointer = 0xFF;        // This is a common choice for the stack in many 6502 systems.
+                                // the range of stack becomes 0x0100 to 0x01FF in the memory
 }
 
 cpu::~cpu()
@@ -44,133 +49,213 @@ cpu::~cpu()
 // Function Defintions Start Here..............
 
 //Load operations definitions
-void cpu::LDA()
+void cpu::LDA() //tested status : working
 {   
+    accumulator = data_bus;
+    set_flag(Z, accumulator == 0x00);
+    set_flag(N, accumulator & 0x80);
     std::cout <<"LDA"<< std::endl;
 }
 
-void cpu::LDX()
-{
+void cpu::LDX() //tested status : working
+{   
+    X_reg = data_bus;
+    set_flag(Z, X_reg == 0x00);
+    set_flag(N, X_reg & 0x80);
     std::cout <<"LDX"<< std::endl;
 }
 
-void cpu::LDY()
-{
+void cpu::LDY() //tested status : working
+{   
+    Y_reg = data_bus;
+    set_flag(Z, Y_reg == 0x00);
+    set_flag(N, Y_reg & 0x80);
     std::cout <<"LDY"<< std::endl;
 }
 
-void cpu::STA()
-{
+void cpu::STA() 
+{   
+    memory[address_bus] = accumulator;
     std::cout <<"STA"<< std::endl;
 }
 
 void cpu::STX()
-{
+{   
+    memory[address_bus] = X_reg;
     std::cout <<"STX"<< std::endl;
 }
 
 void cpu::STY()
-{
+{   
+    memory[address_bus] = Y_reg;
     std::cout <<"STY"<< std::endl;
 }
 
 //Register transfer operations definitions
 void cpu::TAX()
-{
+{   
+    X_reg = accumulator;
+    set_flag(Z, X_reg == 0x00);
+    set_flag(N, X_reg & 0x80);
     std::cout <<"TAX"<< std::endl;
 }
 
 void cpu::TAY()
-{
+{   
+    Y_reg = accumulator;
+    set_flag(Z, Y_reg == 0x00);
+    set_flag(N, Y_reg & 0x80);
     std::cout <<"TAY"<< std::endl;
 }
 
 void cpu::TXA()
-{
+{   
+    accumulator = X_reg;
+    set_flag(Z, accumulator == 0x00);
+    set_flag(N, accumulator & 0x80);
     std::cout <<"TXA"<< std::endl;
 }
 
 void cpu::TYA()
-{
+{   accumulator = Y_reg;
+    set_flag(Z, accumulator == 0x00);
+    set_flag(N, accumulator & 0x80);
     std::cout <<"TYA"<< std::endl;
 }
 
 //Stack operations definitions
 void cpu::TSX()
-{
+{   
+    X_reg = stack_pointer + stack_base_add;
+    set_flag(Z, X_reg == 0x00);
+    set_flag(N, X_reg & 0x80);
     std::cout <<"TSX"<< std::endl;
 }
 
 void cpu::TXS()
-{
+{   
+    stack_pointer = X_reg;
+
     std::cout <<"TXS"<< std::endl;
 }
 
 void cpu::PHA()
-{
+{   memory[stack_pointer + stack_base_add] = accumulator;
+    stack_pointer--;
     std::cout <<"PHA"<< std::endl;
 }
 
 void cpu::PHP()
-{
+{   
+    memory[stack_pointer + stack_base_add] = status_reg;
+    stack_pointer--;
     std::cout <<"PHP"<< std::endl;
 }
 
 void cpu::PLA()
-{
+{   
+    stack_pointer++;
+    accumulator = memory[stack_pointer + stack_base_add];
+    
+    set_flag(Z, accumulator == 0x00);
+    set_flag(N, accumulator & 0x80);
     std::cout <<"PLA"<< std::endl;
 }
 
 void cpu::PLP()
-{
+{   
+    stack_pointer++;
+    status_reg = memory[stack_pointer + stack_base_add];
+    
     std::cout <<"PLP"<< std::endl;
 }
 
 //Logical operations definitions
 
 void cpu::AND()
-{
+{   accumulator = (accumulator & data_bus);
+    set_flag(Z, accumulator == 0x00);
+    set_flag(N, accumulator & 0x80);
     std::cout <<"AND"<< std::endl;
 }
 
 void cpu::EOR()
-{
+{   accumulator = (accumulator ^ data_bus);
+    set_flag(Z, accumulator == 0x00);
+    set_flag(N, accumulator & 0x80);
     std::cout <<"EOR"<< std::endl;
 }
 
 void cpu::ORA()
-{
+{   accumulator = (accumulator | data_bus);
+    set_flag(Z, accumulator == 0x00);
+    set_flag(N, accumulator & 0x80);
     std::cout <<"ORA"<< std::endl;
 }
 
 void cpu::BIT()
-{
+{   
+    set_flag(Z, accumulator & data_bus);
+    set_flag(N, data_bus >> 7);
+    set_flag(N, (data_bus >> 6) & 0x2 );
     std::cout <<"BIT"<< std::endl;
 }
 
 //Arithemteic operations definitions
+//both ADC and SBC are complex instructions....I refered to javidx code
 void cpu::ADC()
-{
+{   
+    result_16 = accumulator + data_bus + get_flag(C);
+    set_flag(C, result_16 > 0xFF);
+    // SetFlag(V, (~((uint16_t)accumulator ^ (uint16_t)data_bus) & ((uint16_t)accumulator ^ (uint16_t)result_8)) & 0x0080);
+    set_flag(V, (~(accumulator ^ data_bus) & (accumulator ^ (uint8_t)result_16)) & 0x0080); 
+    
+    accumulator = (result_16 & 0x00FF);
+    
+    set_flag(Z, accumulator == 0x00);
+    set_flag(N, accumulator & 0x80);
     std::cout <<"ADC"<< std::endl;
 }
 
 void cpu::SBC()
-{
+{   
+    result_16  = accumulator + (data_bus ^ 0x00FF) + get_flag(C);
+    set_flag(C, result_16 & 0xFF00);
+    // SetFlag(V, (temp ^ (uint16_t)a) & (temp ^ value) & 0x0080);
+    set_flag(V, ((uint8_t)result_16 ^ (accumulator)) & ( (uint8_t)result_16 ^ (data_bus ^ 0x00FF) ) & 0x0080);
+
+    accumulator = (result_16 & 0xFF00);
+
+    set_flag(Z, accumulator == 0x00);
+    set_flag(N, accumulator & 0x80);
+
     std::cout <<"SBC"<< std::endl;
 }
 
 void cpu::CMP()
-{
+{   
+    result_8 = accumulator - data_bus;
+    set_flag(C, result_8 >= data_bus);
+	set_flag(Z, result_8 == 0x0000);
+	set_flag(N, result_8 & 0x0080);
     std::cout <<"CMP"<< std::endl;
 }
 
 void cpu::CPX()
-{
+{   
+    result_8 = X_reg - data_bus;
+    set_flag(C, result_8 >= data_bus);
+	set_flag(Z, result_8 == 0x0000);
+	set_flag(N, result_8 & 0x0080);
     std::cout <<"CPX"<< std::endl;
 }
 
 void cpu::CPY()
-{
+{   
+    result_8 = Y_reg - data_bus;
+    set_flag(C, result_8 >= data_bus);
+	set_flag(Z, result_8 == 0x0000);
+	set_flag(N, result_8 & 0x0080);
     std::cout <<"CPY"<< std::endl;
 }
 
@@ -178,271 +263,481 @@ void cpu::CPY()
 //Increments and Decrement operations definitions
 
 void cpu::INC()
-{
+{   
+    result_8 = data_bus++;
+    set_flag(Z, result_8 == 0x0000);
+	set_flag(N, result_8 & 0x0080);
+    flash_mem_at_loc(result_8, address_bus);
+
     std::cout <<"INC"<< std::endl;
 }
 
 void cpu::INX()
-{
+{   
+    result_8 = X_reg++;
+    set_flag(Z, result_8 == 0x0000);
+	set_flag(N, result_8 & 0x0080);
+    X_reg = result_8;
     std::cout <<"INX"<< std::endl;
 }
 
 void cpu::INY()
-{
+{   
+    result_8 = Y_reg++;
+    set_flag(Z, result_8 == 0x0000);
+	set_flag(N, result_8 & 0x0080);
+    Y_reg = result_8;
+
     std::cout <<"INY"<< std::endl;
 }
 
 void cpu::DEC()
-{
+{   
+    result_8 = data_bus--;
+    set_flag(Z, result_8 == 0x0000);
+	set_flag(N, result_8 & 0x0080);
+    flash_mem_at_loc(result_8, address_bus);
     std::cout <<"DEC"<< std::endl;
 }
 
 void cpu::DEX()
-{
+{   
+    result_8 = X_reg--;
+    set_flag(Z, result_8 == 0x0000);
+	set_flag(N, result_8 & 0x0080);
+    X_reg = result_8;
     std::cout <<"DEX"<< std::endl;
 }
 
 void cpu::DEY()
-{
+{   
+    result_8 = Y_reg--;
+    set_flag(Z, result_8 == 0x0000);
+	set_flag(N, result_8 & 0x0080);
+    Y_reg = result_8;
     std::cout <<"DEY"<< std::endl;
 }
 
 //Shift operations definitions
 void cpu::ASL()
-{
+{   
+    if(fetch_ret.add_mode_ptr == &cpu::add_IMP){
+        set_flag(C, accumulator & 0x80);
+        accumulator = accumulator << 1;
+        result_8 = accumulator;
+    }
+    else{
+        set_flag(C, data_bus & 0x80);
+        result_8 = data_bus << 1;
+        flash_mem_at_loc(result_8, address_bus);
+
+    }
+    set_flag(Z, result_8 == 0x0000);
+    set_flag(N, result_8 & 0x0080);
     std::cout <<"ASL"<< std::endl;
 }
 
 void cpu::LSR()
-{
+{   
+    if(fetch_ret.add_mode_ptr == &cpu::add_IMP){
+        set_flag(C, accumulator & 0x01);
+        accumulator = accumulator >> 1;
+        result_8 = accumulator;
+    }
+    else{
+        set_flag(C, data_bus & 0x01);
+        result_8 = data_bus >> 1;
+        flash_mem_at_loc(result_8, address_bus);
+
+    }
+    set_flag(Z, result_8 == 0x0000);
+    set_flag(N, result_8 & 0x0080);
     std::cout <<"LSR"<< std::endl;
 }
 
 void cpu::ROL()
-{
+{   
+    uint8_t temp_c = get_flag(C);
+
+    if(fetch_ret.add_mode_ptr == &cpu::add_IMP){
+        set_flag(C, accumulator & 0x80);
+        accumulator = accumulator << 1;
+        accumulator = accumulator | temp_c; 
+        result_8 = accumulator;
+    }
+    else{
+        set_flag(C, data_bus & 0x80);
+        result_8 = data_bus << 1;
+        result_8 = result_8 | temp_c;
+        flash_mem_at_loc(result_8, address_bus);
+
+    }
+    set_flag(Z, result_8 == 0x0000);
+    set_flag(N, result_8 & 0x0080);
     std::cout <<"ROL"<< std::endl;
 }
 
 void cpu::ROR()
-{
+{   
+    uint8_t temp_c = get_flag(C);
+    
+    if(fetch_ret.add_mode_ptr == &cpu::add_IMP){
+        set_flag(C, accumulator & 0x80);
+        accumulator = accumulator >> 1;
+        accumulator = accumulator | (temp_c << 7); 
+        result_8 = accumulator;
+    }
+    else{
+        set_flag(C, data_bus & 0x80);
+        result_8 = data_bus << 1;
+        result_8 = result_8 | (temp_c << 7); 
+        flash_mem_at_loc(result_8, address_bus);
+
+    }
+    set_flag(Z, result_8 == 0x0000);
+    set_flag(N, result_8 & 0x0080);
     std::cout <<"ROR"<< std::endl;
 }
 
 //Jump and Call operations definitions
 
 void cpu::JMP()
-{
+{   
+    program_counter = address_bus;
     std::cout <<"JMP"<< std::endl;
 }
 
 void cpu::JSR()
-{
+{   
+    memory[stack_pointer+stack_base_add] = (uint8_t)(program_counter>>8);
+    stack_pointer--;
+    memory[stack_pointer+stack_base_add] = (uint8_t)(program_counter);
+    stack_pointer--;
+    program_counter = address_bus;
     std::cout <<"JSR"<< std::endl;
 }
 
 void cpu::RTS()
-{
+{   
+    stack_pointer++;
+    program_counter = memory[stack_pointer+stack_base_add];
+    stack_pointer++;
+    program_counter = program_counter | (memory[stack_pointer+stack_base_add]<<8);
     std::cout <<"RTS"<< std::endl;
 }
 
 //Branching operations definitions
 void cpu::BCC()
-{
+{   
+    if(get_flag(C) == 0x00){
+        program_counter = address_bus;
+    }
     std::cout <<"BCC"<< std::endl;
 }
 
 void cpu::BCS()
-{
+{   
+    if(get_flag(C) != 0x00){
+        program_counter = address_bus;
+    }
     std::cout <<"BCS"<< std::endl;
 }
 
 void cpu::BEQ()
-{
+{   
+    if(get_flag(Z) != 0x00){
+        program_counter = address_bus;
+    }
     std::cout <<"BEQ"<< std::endl;
 }
 
 void cpu::BMI()
-{
+{   
+    if(get_flag(N) != 0x00){
+        program_counter = address_bus;
+    }
+
     std::cout <<"BMI"<< std::endl;
 }
 
 void cpu::BNE()
-{
+{   
+    if(get_flag(Z) == 0x00){
+        program_counter = address_bus;
+    }
     std::cout <<"BNE"<< std::endl;
 }
 
 void cpu::BPL()
-{
+{   
+    if(get_flag(N) == 0x00){
+        program_counter = address_bus;
+    }
     std::cout <<"BPL"<< std::endl;
 }
 
 void cpu::BVC()
-{
+{   
+    if(get_flag(V) == 0x00){
+        program_counter = address_bus;
+    }
     std::cout <<"BVC"<< std::endl;
 }
 
 void cpu::BVS()
-{
+{   
+    if(get_flag(V) != 0x00){
+        program_counter = address_bus;
+    }
     std::cout <<"BVS"<< std::endl;
 }
 
 //Status flag changes operations definitions
 void cpu::CLC()
-{
+{   
+    set_flag(C,0);
     std::cout <<"CLC"<< std::endl;
 }
 
 void cpu::CLD()
-{
+{   
+    set_flag(D,0);
     std::cout <<"CLD"<< std::endl;
 }
 
 void cpu::CLI()
-{
+{   
+    set_flag(I,0);
     std::cout <<"CLI"<< std::endl;
 }
 
 void cpu::CLV()
-{
+{   
+    set_flag(V,0);
     std::cout <<"CLV"<< std::endl;
 }
 
 void cpu::SEC()
-{
+{   
+    set_flag(C,1);
     std::cout <<"SEC"<< std::endl;
 }
 
 void cpu::SED()
-{
+{   
+    set_flag(D,1);
     std::cout <<"SED"<< std::endl;
 }
 
 void cpu::SEI()
-{
+{   
+    set_flag(I,1);
     std::cout <<"SEI"<< std::endl;
 }
 
 //SYSTEM CHANGES operations definitions
 void cpu::BRK()
-{
+{   
+
+    memory[stack_pointer+stack_base_add] = (uint8_t)(program_counter>>8);
+    stack_pointer--;
+    memory[stack_pointer+stack_base_add] = (uint8_t)(program_counter);
+    stack_pointer--;
+
+    set_flag(B,1);
+    memory[stack_pointer+stack_base_add] = status_reg;
+    stack_pointer--;
+
+    set_flag(I,1);
+    program_counter = (memory[interrupt_vector_loc] | (memory[interrupt_vector_loc] << 8));
+    
     std::cout <<"BRK"<< std::endl;
 }
 
 void cpu::RTI()
-{
+{   
+    stack_pointer++;
+    status_reg = memory[stack_pointer+stack_base_add];
+    set_flag(B,0);
+    set_flag(I,0);
+
+    stack_pointer++;
+    program_counter = memory[stack_pointer+stack_base_add];
+    stack_pointer++;
+    program_counter = program_counter | (memory[stack_pointer+stack_base_add]<<8);
+    
     std::cout <<"RTI"<< std::endl;
 }
 
 //Illegal opcodes definitions
 
-void cpu::NOP()
-{
+void cpu::NOP() //
+{   
     std::cout <<"NOP"<< std::endl;
 }
 
-void cpu::JAM()
-{
+void cpu::JAM() //
+{   
+    while (true)
+    { 
+      program_counter++;
+      fetch_ins();
+      data_bus = 0xFF;  
+    }
+    
     std::cout <<"JAM"<< std::endl;
 }
 
-void cpu::SLO()
-{
+void cpu::SLO() //
+{   
+    ASL();
+    ORA();
     std::cout <<"SLO"<< std::endl;
 }
 
-void cpu::RLA()
-{
+void cpu::RLA() //
+{   
+    ROL();
+    AND();
     std::cout <<"RLA"<< std::endl;
 }
 
-void cpu::SRE()
-{
+void cpu::SRE() //
+{   
+    LSR();
+    EOR();
     std::cout <<"SRE"<< std::endl;
 }
 
-void cpu::RRA()
-{
+void cpu::RRA() //
+{   
+    ROR();
+    ADC();
     std::cout <<"RRA"<< std::endl;
 }
 
-void cpu::SAX()
-{
+void cpu::SAX() //
+{   
+    data_bus = (accumulator & X_reg);
     std::cout <<"SAX"<< std::endl;
 }
 
-void cpu::SHA()
-{
+void cpu::SHA() //
+{   
+    address_bus = (accumulator & X_reg) & (address_bus >> 8);
     std::cout <<"SHA"<< std::endl;
 }
 
-void cpu::LAX()
-{
+void cpu::LAX() //
+{   
+    LDA();
+    LDX();
     std::cout <<"LAX"<< std::endl;
 }
 
-void cpu::DCP()
-{
+void cpu::DCP() //
+{   
+    DEC();
+    CMP();
     std::cout <<"DCP"<< std::endl;
 }
 
-void cpu::ISC()
+void cpu::ISC() //
 {
+    INC();
+    SBC();
     std::cout <<"ISC"<< std::endl;
 }
 
-void cpu::ANC()
-{
+void cpu::ANC() //
+{   
+    AND();
+        if(fetch_ret.add_mode_ptr == &cpu::add_IMP){
+        set_flag(C, accumulator & 0x80);
+    }
+    else{
+        set_flag(C, data_bus & 0x80);
+    }
     std::cout <<"ANC"<< std::endl;
 }
 
-void cpu::ALR()
-{
+void cpu::ALR()  //
+{   
+    AND();
+    LSR();
     std::cout <<"ALR"<< std::endl;
 }
 
-void cpu::ARR()
-{
+void cpu::ARR() //
+{   
+    AND();
+    ROR();
     std::cout <<"ARR"<< std::endl;
 }
 
-void cpu::ANE()
-{
+void cpu::ANE() //
+{   
+    accumulator = data_bus & X_reg;
+    set_flag(Z, accumulator == 0x00);
+    set_flag(N, accumulator & 0x80);
     std::cout <<"ANE"<< std::endl;
 }
 
-void cpu::TAS()
-{
+void cpu::TAS() //
+{   
+    stack_pointer = accumulator & X_reg;
+    address_bus = (accumulator & X_reg) & ((address_bus >> 8) + 0x01);
+
     std::cout <<"TAS"<< std::endl;
 }
 
-void cpu::LXA()
-{
+void cpu::LXA() //
+{   
+    X_reg = accumulator;
     std::cout <<"LXA"<< std::endl;
+    set_flag(Z, X_reg == 0x00);
+    set_flag(N, X_reg & 0x80);
 }
 
-void cpu::LAS()
-{
+void cpu::LAS() //
+{   
+    accumulator = stack_pointer;
+    accumulator = accumulator & data_bus;
+    stack_pointer = accumulator;
+
     std::cout <<"LAS"<< std::endl;
 }
 
-void cpu::SBX()
-{
+void cpu::SBX() //
+{   
+    X_reg = accumulator - X_reg;
+    set_flag(Z, X_reg == 0x00);
+    set_flag(N, X_reg & 0x80);
     std::cout <<"SBX"<< std::endl;
 }
 
-void cpu::SHY()
+void cpu::SHY() //
 {
+    address_bus = ((address_bus>>8) + 0x1) &  Y_reg;
     std::cout <<"SHY"<< std::endl;
 }
 
-void cpu::SHX()
-{
+void cpu::SHX() //
+{   
+    address_bus = ((address_bus>>8) + 0x1) &  X_reg;
     std::cout <<"SHX"<< std::endl;
 }
 
+void cpu::USBC() //
+{
+    SBC();
+    NOP();
+    std::cout <<"USBC"<< std::endl;
+}
 //Addressing modes definitions
 void cpu::add_IMP()
-{
+{   
+    program_counter++;
     std::cout <<"add_IMP"<< std::endl;
 }
 
@@ -482,6 +777,7 @@ void cpu::add_ZPX() //tested status : working
 void cpu::add_ZPY() //tested status : working
 {   
     cpu::program_counter++;
+
     cpu::address_bus = cpu::memory[program_counter];
     cpu::address_bus = cpu::address_bus + cpu::Y_reg;
     
@@ -493,8 +789,7 @@ void cpu::add_ZPY() //tested status : working
 void cpu::add_REL() //tested status : working
 {   cpu::program_counter++;
     int8_t offset = cpu::memory[cpu::program_counter];
-    cpu::program_counter++;
-    cpu::program_counter = cpu::program_counter + offset;
+    cpu::address_bus = cpu::program_counter + offset;
 
     std::cout <<"add_REL"<< std::endl;
 }
@@ -595,15 +890,24 @@ void cpu::flash_mem_at_loc(uint8_t val ,uint16_t loc)
 }
 
 void cpu::print_mem(uint8_t upto_add) const {
-    for (uint8_t i = 0; i <= upto_add; ++i) {
-        std::cout << "memory[" << static_cast<int>(i) << "] = " << std::hex << static_cast<int>(memory[i]) << std::endl;
+    std::cout <<std::endl;
+    std::cout << "----------MEMORY----------" <<std::endl;
+    for (uint8_t i = 0; i <= upto_add; ++i){
+        std::cout << " memory[" << static_cast<int>(i) << "] = " << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(memory[i]);
 
+        if (i % 5 == 4 || i == upto_add) {
+            std::cout << std::endl;  // Move to the next line
+        } 
+        else {
+            std::cout << " ";  // Add space between elements in the same line
+        }
     }
+    std::cout <<std::endl;
 }
 
-cpu::instruction cpu::fetch_ins()
+void cpu::fetch_ins()
 {   
-    instruction fetch_ret;
+    // instruction fetch_ret;
 
     uint8_t opcode = memory[program_counter];
     // std::cout << "opcode = " << std::hex << static_cast<int>(opcode) << std::endl;
@@ -613,44 +917,99 @@ cpu::instruction cpu::fetch_ins()
     fetch_ret.operation_ptr = ins_table[opcode].operation_ptr;
     fetch_ret.cycles = ins_table[opcode].cycles;
 
-    return fetch_ret;
+    // return fetch_ret;
 }
 
 void cpu::exe_ins(void (cpu::*addModeType)(), void (cpu::*operation)(), uint8_t cycles) {
-
+    std::cout <<std::endl;
+    std::cout << "----------EXECUTED FUNCTIONS----------" <<std::endl;
     // Call the address mode function
     (this->*addModeType)();
 
     // Call the operation function
     (this->*operation)();
+    std::cout <<std::endl;
 }
 
 
-int main()
+// Sets or clears a specific bit of the status register
+void cpu::set_flag(flag f, bool v)
 {
-    std::cout <<"COMPILED SUCCESSFULLY"<< std::endl;
+	if (v)
+		cpu::status_reg |= f;
+	else
+		cpu::status_reg &= ~f;
+}
+
+// // Returns the value of a specific bit of the status register
+uint8_t cpu::get_flag(flag f)
+{
+	return ((cpu::status_reg & f) > 0) ? 1 : 0;
+}
+
+void printEmulatorTitle() {
+
+    
+    std::cout << "   #######################################" << std::endl;
+    std::cout << " #########################################" << std::endl;
+    std::cout << " #                                     ###" << std::endl;
+    std::cout << " #   666666  555555   000000  222222   ### " << std::endl;
+    std::cout << " #   66      55       00  00      22   ###" << std::endl;
+    std::cout << " #   666666  555555   00  00  222222   ###" << std::endl;
+    std::cout << " #   6   66      55   00  00  2        ###" << std::endl;
+    std::cout << " #   666666  555555   000000  222222   ###" << std::endl;
+    std::cout << " #                                     ###" << std::endl;
+    std::cout << " ########################################" << std::endl;
+    std::cout << std::endl;
+}
+
+int main()
+{   printEmulatorTitle();
+    std::cout <<"<<<COMPILED SUCCESSFULLY>>>"<< std::endl;
 
     cpu my_6502;
-    uint8_t print_mem_upto = 0x05;
+    uint8_t print_mem_upto = 0x15;
 
-    my_6502.flash_mem({0xF0,0x03,0x20}); //LDA add_ABY add_bus = 2010
-    my_6502.flash_mem_at_loc(0xF0,0x1000); // add_bus = 2010
-    my_6502.flash_mem_at_loc(0x03,0x1001);
-    my_6502.flash_mem_at_loc(0xAA,0x3553);
-;
-    my_6502.Y_reg = 0x10;
+    my_6502.flash_mem({0xA9,0x10});
+    // my_6502.flash_mem_at_loc(0x20,0x10); // add_bus = 2010
+    // my_6502.flash_mem_at_loc(-0x03,0x1001);
+    // my_6502.flash_mem_at_loc(0xAA,0x3553);
+    my_6502.accumulator = 0xCC;
+    my_6502.X_reg = 0xAA;
+    my_6502.Y_reg = 0xFF;
     my_6502.print_mem(print_mem_upto);
 
-    cpu::instruction ins_info = my_6502.fetch_ins();
+    my_6502.fetch_ins();
 
-    my_6502.exe_ins(ins_info.add_mode_ptr, ins_info.operation_ptr, ins_info.cycles);
+    my_6502.exe_ins( my_6502.fetch_ret.add_mode_ptr, my_6502.fetch_ret.operation_ptr, my_6502.fetch_ret.cycles);
 
     //print data bus and address bus
-    std::cout << "Databus (hex): 0x" << std::hex << static_cast<int>(my_6502.data_bus) << std::endl;
-    std::cout << "Addressbus (hex): 0x" << std::hex << static_cast<int>(my_6502.address_bus) << std::endl;
-    std::cout << "Program counter (hex): 0x" << std::hex << static_cast<int>(my_6502.program_counter) << std::endl;
+    std::cout <<std::endl;
+    std::cout << "----------BUSES----------" <<std::endl;
+    std::cout << "DATABUS : 0x" << std::hex << static_cast<int>(my_6502.data_bus) << std::endl;
+    std::cout << "ADDRESSBUS : 0x" << std::hex << static_cast<int>(my_6502.address_bus) << std::endl;
+    std::cout <<std::endl;
+    
+    std::cout <<std::endl;
+    std::cout << "----------REGISTERS----------" <<std::endl;
+    std::cout << "PROGRAM COUNTER : 0x" << std::hex << static_cast<int>(my_6502.program_counter) << std::endl;
+    std::cout << "ACCUMULATOR REG : 0x" << std::hex << static_cast<int>(my_6502.accumulator) << std::endl;
+    std::cout << "X REG : 0x" << std::hex << static_cast<int>(my_6502.X_reg) << std::endl;
+    std::cout << "Y REG : 0x" << std::hex << static_cast<int>(my_6502.Y_reg) << std::endl;
+    std::cout << "STACK POINTER : 0x" << std::hex << static_cast<int>(my_6502.stack_pointer) << std::endl;
+    std::cout << "STATUS REG FLAGS :" << std::endl;
+    std::cout << "N=" << ((my_6502.status_reg >> 7) & 1) << " ";
+    std::cout << "V=" << ((my_6502.status_reg >> 6) & 1) << " ";
+    std::cout << "U=" << ((my_6502.status_reg >> 5) & 1) << " ";
+    std::cout << "B=" << ((my_6502.status_reg >> 4) & 1) << " ";
+    std::cout << "D=" << ((my_6502.status_reg >> 3) & 1) << " ";
+    std::cout << "I=" << ((my_6502.status_reg >> 2) & 1) << " ";
+    std::cout << "Z=" << ((my_6502.status_reg >> 1) & 1) << " ";
+    std::cout << "C=" << (my_6502.status_reg & 1) << std::endl;
 
+    std::cout <<std::endl;
 
+    my_6502.print_mem(print_mem_upto);
 
     return 0;
 }
