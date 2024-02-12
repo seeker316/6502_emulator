@@ -124,7 +124,7 @@ public: // ADDRESSING MODES
     void add_INDi(); // indirect indexed addressing mode   
 
 public: //Helper functions
-    void flash_mem(std::initializer_list<uint8_t> val); //helper function for flashing memory
+    void flash_mem(const std::vector<uint8_t>& val); //helper function for flashing memory
     void flash_mem_at_loc(uint8_t val, uint16_t loc); //helper function for flashing mem at specific location
     void print_mem(uint8_t upto_add) const; //Helper function for printing memory
     void fetch_ins(); //Helper function to fetch instructions

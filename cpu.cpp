@@ -874,14 +874,23 @@ void cpu::add_INDi()    //tested status : working
 
 //Helper function Definitions
 
-void cpu::flash_mem(std::initializer_list<uint8_t> val) {
-    if (val.size() > memory.size()) {
-        std::cerr << "Error: Too many values provided for the memory array." << std::endl;
-        return;
-    }
+// void cpu::flash_mem(std::initializer_list<uint8_t> val) {
+//     if (val.size() > memory.size()) {
+//         std::cerr << "Error: Too many values provided for the memory array." << std::endl;
+//         return;
+//     }
 
-    std::copy(val.begin(), val.end(), memory.begin());
-}
+//     std::copy(val.begin(), val.end(), memory.begin());
+// }
+
+void cpu::flash_mem(const std::vector<uint8_t>& val) {
+        if (val.size() > memory.size()) {
+            std::cerr << "Error: Too many values provided for the memory array." << std::endl;
+            return;
+        }
+
+        std::copy(val.begin(), val.end(), memory.begin());
+    }
 
 void cpu::flash_mem_at_loc(uint8_t val ,uint16_t loc)
 {
@@ -928,6 +937,9 @@ void cpu::exe_ins(void (cpu::*addModeType)(), void (cpu::*operation)(), uint8_t 
 
     // Call the operation function
     (this->*operation)();
+
+    cpu::program_counter++;
+
     std::cout <<std::endl;
 }
 
@@ -967,11 +979,18 @@ int main()
 {   printEmulatorTitle();
     std::cout <<"<<<COMPILED SUCCESSFULLY>>>"<< std::endl;
 
+    
     cpu my_6502;
+    
+    std::vector<uint8_t> flash_code = {0xA9,0x10,0xA9,0x10}; //OPCODES WHICH WILL BE FLASHED
     uint8_t print_mem_upto = 0x15;
+    int flashed_code_size = flash_code.size()+1;
+    int cpu_stats_upto = flashed_code_size; //NOTE: CPU stats are printed in a step of 2, since the pc is incremented at execute function.
 
-    my_6502.flash_mem({0xA9,0x10});
-    // my_6502.flash_mem_at_loc(0x20,0x10); // add_bus = 2010
+    std::cout << "DEBUG_FLASH CODE SIZE" << std::hex << flash_code.size() << std::endl;
+
+    my_6502.flash_mem(flash_code);
+    my_6502.flash_mem_at_loc(0x20,0x10); // add_bus = 2010
     // my_6502.flash_mem_at_loc(-0x03,0x1001);
     // my_6502.flash_mem_at_loc(0xAA,0x3553);
     my_6502.accumulator = 0xCC;
@@ -979,38 +998,46 @@ int main()
     my_6502.Y_reg = 0xFF;
     my_6502.print_mem(print_mem_upto);
 
-    my_6502.fetch_ins();
+    while (my_6502.program_counter <= flashed_code_size) //The while loop is configured to execute instructions until reaching the final position of the flashed code.
+    {                                          
+        my_6502.fetch_ins();
 
-    my_6502.exe_ins( my_6502.fetch_ret.add_mode_ptr, my_6502.fetch_ret.operation_ptr, my_6502.fetch_ret.cycles);
+        my_6502.exe_ins( my_6502.fetch_ret.add_mode_ptr, my_6502.fetch_ret.operation_ptr, my_6502.fetch_ret.cycles);
+        
+        if(my_6502.program_counter <= cpu_stats_upto) //This if statement is to print CPU stats, used for debugging.
+        {
+            //print data bus and address bus
+            std::cout <<std::endl;
+            std::cout << "----------BUSES----------" <<std::endl;
+            std::cout << "DATABUS : 0x" << std::hex << static_cast<int>(my_6502.data_bus) << std::endl;
+            std::cout << "ADDRESSBUS : 0x" << std::hex << static_cast<int>(my_6502.address_bus) << std::endl;
+            std::cout <<std::endl;
+            
+            std::cout <<std::endl;
+            std::cout << "----------REGISTERS----------" <<std::endl;
+            std::cout << "PROGRAM COUNTER : 0x" << std::hex << static_cast<int>(my_6502.program_counter) << std::endl;
+            std::cout << "ACCUMULATOR REG : 0x" << std::hex << static_cast<int>(my_6502.accumulator) << std::endl;
+            std::cout << "X REG : 0x" << std::hex << static_cast<int>(my_6502.X_reg) << std::endl;
+            std::cout << "Y REG : 0x" << std::hex << static_cast<int>(my_6502.Y_reg) << std::endl;
+            std::cout << "STACK POINTER : 0x" << std::hex << static_cast<int>(my_6502.stack_pointer) << std::endl;
+            std::cout << "STATUS REG FLAGS :" << std::endl;
+            std::cout << "N=" << ((my_6502.status_reg >> 7) & 1) << " ";
+            std::cout << "V=" << ((my_6502.status_reg >> 6) & 1) << " ";
+            std::cout << "U=" << ((my_6502.status_reg >> 5) & 1) << " ";
+            std::cout << "B=" << ((my_6502.status_reg >> 4) & 1) << " ";
+            std::cout << "D=" << ((my_6502.status_reg >> 3) & 1) << " ";
+            std::cout << "I=" << ((my_6502.status_reg >> 2) & 1) << " ";
+            std::cout << "Z=" << ((my_6502.status_reg >> 1) & 1) << " ";
+            std::cout << "C=" << (my_6502.status_reg & 1) << std::endl;
 
-    //print data bus and address bus
-    std::cout <<std::endl;
-    std::cout << "----------BUSES----------" <<std::endl;
-    std::cout << "DATABUS : 0x" << std::hex << static_cast<int>(my_6502.data_bus) << std::endl;
-    std::cout << "ADDRESSBUS : 0x" << std::hex << static_cast<int>(my_6502.address_bus) << std::endl;
-    std::cout <<std::endl;
+            std::cout <<std::endl;
+
+            my_6502.print_mem(print_mem_upto);
     
-    std::cout <<std::endl;
-    std::cout << "----------REGISTERS----------" <<std::endl;
-    std::cout << "PROGRAM COUNTER : 0x" << std::hex << static_cast<int>(my_6502.program_counter) << std::endl;
-    std::cout << "ACCUMULATOR REG : 0x" << std::hex << static_cast<int>(my_6502.accumulator) << std::endl;
-    std::cout << "X REG : 0x" << std::hex << static_cast<int>(my_6502.X_reg) << std::endl;
-    std::cout << "Y REG : 0x" << std::hex << static_cast<int>(my_6502.Y_reg) << std::endl;
-    std::cout << "STACK POINTER : 0x" << std::hex << static_cast<int>(my_6502.stack_pointer) << std::endl;
-    std::cout << "STATUS REG FLAGS :" << std::endl;
-    std::cout << "N=" << ((my_6502.status_reg >> 7) & 1) << " ";
-    std::cout << "V=" << ((my_6502.status_reg >> 6) & 1) << " ";
-    std::cout << "U=" << ((my_6502.status_reg >> 5) & 1) << " ";
-    std::cout << "B=" << ((my_6502.status_reg >> 4) & 1) << " ";
-    std::cout << "D=" << ((my_6502.status_reg >> 3) & 1) << " ";
-    std::cout << "I=" << ((my_6502.status_reg >> 2) & 1) << " ";
-    std::cout << "Z=" << ((my_6502.status_reg >> 1) & 1) << " ";
-    std::cout << "C=" << (my_6502.status_reg & 1) << std::endl;
-
-    std::cout <<std::endl;
-
-    my_6502.print_mem(print_mem_upto);
-
+        }
+        
+    }
+    std::cout << "**********COMPLETED EXECUTION**********" <<std::endl;
     return 0;
 }
 
