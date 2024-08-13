@@ -20,3 +20,5 @@ So, if you load the value 255 (11111111 in binary) into the accumulator, the Neg
 It's JAN 27 10 PM I have finally finished the code.... done with all the functions including illegal opcodes
 the thing is not been tested yet...but I'll see about it later...I've been coding since morning...that was a lot of hardwork....actually i planned on completing the thing by last weekend but managed to do it a week later.
 that's all. The next things I plan on doing is testing it with some online scripts fix if any errors...and then plan on using it in any further implementatiosn like NES or actually I haven't looked into it but I was planning on running Wozman / apple I software.   
+
+finished motorola mc6850 console terminal emulation, if successfully the plan is to directly upload wozman on 6502
